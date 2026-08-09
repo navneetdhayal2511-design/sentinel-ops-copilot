@@ -2,7 +2,9 @@
 
 Fullstack + ML engineering project: an incident ops console where an agent triages alerts with tools, hybrid runbook RAG, human feedback, observability, and a measurable evaluation harness.
 
-**Repo:** https://github.com/navneetdhayal2511-design/sentinel-ops-copilot
+**Repo:** https://github.com/navneetdhayal2511-design/sentinel-ops-copilot  
+**Live demo:** https://sentinel-ops-copilot-production.up.railway.app  
+**Login:** `admin@sentinel.dev` / `admin123`
 
 ---
 

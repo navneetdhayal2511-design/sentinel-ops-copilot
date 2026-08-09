@@ -1,6 +1,17 @@
 # Deploy Sentinel Ops Copilot
 
-## Option A — Render (recommended free tier)
+## Live deployment (Railway)
+
+**URL:** https://sentinel-ops-copilot-production.up.railway.app  
+**Login:** `admin@sentinel.dev` / `admin123`  
+**Dashboard:** https://railway.com/project/204d1040-57be-4c44-b70d-023ddb6ef761
+
+Redeploy from this machine:
+```powershell
+.\.tools\railway.exe up .\backend --path-as-root -y -d --ci
+```
+
+## Option A — Render (alternate)
 
 1. Push this repo to GitHub (already done if you followed setup).
 2. Go to [https://render.com](https://render.com) → **New** → **Blueprint**.
