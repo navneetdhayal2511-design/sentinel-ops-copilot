@@ -57,18 +57,25 @@ Alert (UI / Webhook)
 
 ---
 
-## Quick start
+## Quick start (Windows)
 
+**Easiest:** double-click `Start Sentinel.bat` on your Desktop  
+(or `sentinel-ops-copilot\start-sentinel.bat`).
+
+Then open http://127.0.0.1:8000
+
+**Autostart at login (already installable):**
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-autostart.ps1
+```
+
+**Manual:**
 ```bash
 cd backend
 python -m venv .venv
-
-# Windows
 .venv\Scripts\activate
-
 pip install -r requirements.txt
-copy .env.example .env
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 - UI: http://127.0.0.1:8000
