@@ -1,0 +1,139 @@
+:root {
+  --ink: #14201c;
+  --ink-soft: #2a3a34;
+  --fog: #e8efe9;
+  --mist: #f3f7f4;
+  --panel: rgba(255, 255, 255, 0.72);
+  --line: rgba(20, 32, 28, 0.12);
+  --teal: #0f6e56;
+  --teal-deep: #0a4d3c;
+  --ember: #c45c26;
+  --amber: #b7791f;
+  --slate: #5c6b64;
+  --ok: #1f7a4d;
+  --shadow: 0 24px 60px rgba(20, 32, 28, 0.12);
+  --font-sans: "Sora", sans-serif;
+  --font-serif: "Source Serif 4", serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(15, 110, 86, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, rgba(196, 92, 38, 0.12), transparent 50%),
+    linear-gradient(180deg, #dce8e1 0%, var(--mist) 45%, #eef3ef 100%);
+  background-attachment: fixed;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+}
+
+.app-shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 3rem;
+}
+
+.brand-mark {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+.fade-up {
+  animation: fadeUp 0.7s ease both;
+}
+
+.fade-up.delay-1 {
+  animation-delay: 0.12s;
+}
+
+.fade-up.delay-2 {
+  animation-delay: 0.22s;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseLine {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleX(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes scan {
+  from {
+    transform: translateY(-30%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.5;
+  }
+  to {
+    transform: translateY(130%);
+    opacity: 0;
+  }
+}
+
+.sev {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sev.critical {
+  color: var(--ember);
+}
+
+.sev.high {
+  color: var(--amber);
+}
+
+.sev.medium {
+  color: var(--teal-deep);
+}
+
+.sev.low {
+  color: var(--slate);
+}
