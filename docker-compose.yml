@@ -1,13 +1,29 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinel
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
   api:
     build: ./backend
     ports:
       - "8000:8000"
     environment:
-      - SECRET_KEY=dev-secret-change-me
-      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      DATABASE_URL: postgresql+psycopg2://sentinel:sentinel@db:5432/sentinel
+      CORS_ORIGINS: http://localhost:8000,http://127.0.0.1:8000,http://localhost:5173
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN:-sentinel-webhook-dev-token}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+    depends_on:
+      - db
     volumes:
       - ./backend/data:/app/data
 
@@ -17,3 +33,6 @@ services:
       - "5173:80"
     depends_on:
       - api
+
+volumes:
+  pgdata:

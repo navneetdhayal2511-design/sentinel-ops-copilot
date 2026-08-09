@@ -288,6 +288,11 @@ button.ghost {
 .eval-list li.pass { border-top: 3px solid var(--ok); }
 .eval-list li.fail { border-top: 3px solid var(--ember); }
 .eval-list p { margin: 0.4rem 0 0; font-size: 0.88rem; }
+.cite-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
+.cite-list li { padding-bottom: 0.45rem; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+.feedback-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.9rem 0; }
+.feedback-row button { border: 0; background: var(--ink); color: #f4f8f5; padding: 0.55rem 0.8rem; }
+.feedback-row button.ghost { background: rgba(255,255,255,0.55); color: var(--ink); border: 1px solid var(--line); }
 
 @media (max-width: 900px) {
   .metrics, .console-grid, .console-grid.secondary, .eval-list { grid-template-columns: 1fr; }

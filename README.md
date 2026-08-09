@@ -1,28 +1,63 @@
 # Sentinel Ops Copilot
 
-Resume-ready fullstack + ML engineering project: an incident ops console where an agent triages alerts using tools, runbook retrieval (RAG), and an evaluation harness.
+Fullstack + ML engineering project: an incident ops console where an agent triages alerts with tools, hybrid runbook RAG, human feedback, observability, and a measurable evaluation harness.
 
-## What you can demo
+**Repo:** https://github.com/navneetdhayal2511-design/sentinel-ops-copilot
 
-- Auth with roles (`admin` / `engineer` / `viewer`)
-- Alert inbox + ingest API
-- Agent investigations with tool traces (metrics, logs, deploys, remediation)
-- BM25 runbook retrieval
-- Audit trail
-- Eval suite with accuracy / confidence / latency report
-- Optional OpenAI tool-calling path when `OPENAI_API_KEY` is set
+---
 
-## Stack
+## Case study
 
-- **Backend:** FastAPI, SQLAlchemy, SQLite, JWT auth
-- **Agent:** heuristic investigator (always works) + optional OpenAI tools
-- **RAG:** rank-bm25 over ops runbooks
-- **Frontend:** React + Vite
-- **Eval:** deterministic cases under `/api/eval/run`
+### Problem
+On-call engineers drown in noisy alerts. Chatbot wrappers rarely help because they lack tools, citations, feedback loops, and quality measurement.
 
-## Quick start (local)
+### Solution
+Sentinel ingests alerts (UI + webhook), runs an investigation agent, retrieves runbooks, proposes root cause + remediation, and records traces/audit events. Humans can approve, reject, or edit recommendations. An eval suite tracks accuracy, citation hit rate, hallucination rate, confidence, and latency.
 
-One command serves both the API and the UI:
+### Architecture
+
+```text
+Alert (UI / Webhook)
+   → FastAPI API (JWT + refresh tokens)
+   → Investigator agent
+        ├─ Tools: metrics, logs, deploys, remediation
+        ├─ Hybrid RAG: BM25 + hashing embeddings (+ optional OpenAI embeddings)
+        └─ Traces + citations persisted
+   → Human feedback (approve / reject / edit)
+   → Eval harness + observability dashboard
+```
+
+### Design tradeoffs
+| Choice | Why |
+|---|---|
+| Heuristic investigator by default | Reliable offline demos, deterministic evals |
+| Optional LLM tool-calling | Stronger reasoning when `OPENAI_API_KEY` is set |
+| Hybrid RAG | Works without embedding API; upgrades automatically with OpenAI |
+| SQLite default / Postgres optional | Fast local start; production-ready DB path |
+| In-process background jobs | Simple async investigations without Redis for MVP |
+
+### Example eval snapshot (heuristic mode)
+- Cases: 6 incident scenarios
+- Metrics: accuracy, precision/recall proxy, citation hit rate, hallucination rate, latency
+- Run via UI (**Run eval suite**) or `POST /api/eval/run`
+
+---
+
+## Features
+- Role-based auth (`admin` / `engineer` / `viewer`) + refresh tokens
+- Alert inbox, manual ingest, PagerDuty-style webhook ingest
+- Agent investigations with tool traces
+- Hybrid RAG citations in the investigation panel
+- Human-in-the-loop feedback
+- Observability endpoint (latency, feedback rates, taxonomy, eval trend)
+- Eval harness with persisted eval runs
+- Docker Compose (API + Postgres + optional Vite UI)
+- GitHub Actions CI
+- Deploy blueprints for Render / Railway
+
+---
+
+## Quick start
 
 ```bash
 cd backend
@@ -31,30 +66,13 @@ python -m venv .venv
 # Windows
 .venv\Scripts\activate
 
-# macOS/Linux
-# source .venv/bin/activate
-
 pip install -r requirements.txt
-copy .env.example .env   # Windows
-# cp .env.example .env   # macOS/Linux
-
+copy .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
 - UI: http://127.0.0.1:8000
 - API docs: http://127.0.0.1:8000/docs
-
-### Optional Vite frontend
-
-If you have Node.js installed, you can also run the React app in `frontend/`:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-UI: http://127.0.0.1:5173
 
 ### Demo accounts
 
@@ -64,46 +82,46 @@ UI: http://127.0.0.1:5173
 | engineer@sentinel.dev | engineer123 | engineer |
 | viewer@sentinel.dev | viewer123 | viewer |
 
-## Optional LLM mode
-
-Add to `backend/.env`:
-
+### Optional LLM / embeddings
 ```env
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
+EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-Without a key, investigations still work via `sentinel-heuristic-v1`.
+### Tests
+```bash
+cd backend
+pytest -q
+```
 
-## Eval
+### Deploy
+See [DEPLOY.md](./DEPLOY.md).
 
-While logged in as admin/engineer in the UI, click **Run eval suite**, or:
+---
+
+## Webhook ingest
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/eval/run \
-  -H "Authorization: Bearer <token>"
+curl -X POST http://127.0.0.1:8000/api/webhooks/alerts \
+  -H "Content-Type: application/json" \
+  -H "X-Sentinel-Token: sentinel-webhook-dev-token" \
+  -d "{\"title\":\"High 5xx\",\"service\":\"payments-api\",\"severity\":\"critical\",\"message\":\"TimeoutError connecting to postgres primary\",\"auto_investigate\":true}"
 ```
 
-Report is also written to `backend/data/eval_report.json`.
+---
 
-## Docker
-
-```bash
-docker compose up --build
-```
-
-- API + UI: http://localhost:8000
-- Optional Vite UI service: http://localhost:5173
-
-## Resume bullets (suggested)
+## Resume bullets
 
 **Fullstack**
-- Built a multi-role ops console with JWT auth, alert ingest, investigation workflow, and audit logging.
-- Designed REST APIs and a React console for real-time incident triage and agent-trace inspection.
+- Built a multi-role incident console with JWT/refresh auth, webhook ingest, async investigation jobs, and audit logging.
+- Shipped observability surfaces (latency, feedback rates, failure taxonomy, eval trend) and Docker/Postgres deploy paths.
 
 **ML / AI Eng**
-- Implemented an alert investigation agent with tool use, runbook retrieval, and confidence-scored recommendations.
-- Shipped an evaluation harness measuring root-cause accuracy, confidence, and latency across incident cases.
+- Implemented a hybrid RAG investigator (BM25 + embeddings) with citations, tool use, and human feedback loop.
+- Created an evaluation harness measuring accuracy, citation hit rate, hallucination rate, confidence, and latency.
+
+---
 
 ## Project layout
 
@@ -111,8 +129,11 @@ docker compose up --build
 sentinel-ops-copilot/
   backend/app/
     agent/          # investigator + tools
-    rag/            # BM25 retriever
+    rag/            # hybrid retriever
     eval/           # eval harness
-    api/            # FastAPI routes
-  frontend/src/     # React console
+    api/            # FastAPI routes (auth, alerts, webhooks, feedback)
+    static/         # ops console UI
+  frontend/         # optional Vite React app
+  .github/workflows # CI
+  DEPLOY.md
 ```

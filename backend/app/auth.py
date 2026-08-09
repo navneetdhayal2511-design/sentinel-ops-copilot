@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Annotated
+from uuid import uuid4
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import User
+from app.models import RefreshToken, User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -28,10 +29,59 @@ def verify_password(plain: str, hashed: str) -> bool:
 def create_access_token(subject: str) -> str:
     expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     return jwt.encode(
-        {"sub": subject, "exp": expire},
+        {"sub": subject, "type": "access", "exp": expire},
         settings.secret_key,
         algorithm="HS256",
     )
+
+
+def create_refresh_token(db: Session, user: User) -> str:
+    jti = uuid4().hex
+    expires = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
+    db.add(RefreshToken(user_id=user.id, jti=jti, expires_at=expires, revoked=False))
+    db.commit()
+    return jwt.encode(
+        {"sub": user.email, "type": "refresh", "jti": jti, "exp": expires},
+        settings.secret_key,
+        algorithm="HS256",
+    )
+
+
+def issue_token_pair(db: Session, user: User) -> dict:
+    return {
+        "access_token": create_access_token(user.email),
+        "refresh_token": create_refresh_token(db, user),
+        "token_type": "bearer",
+    }
+
+
+def rotate_refresh_token(db: Session, refresh_token: str) -> dict:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid refresh token",
+    )
+    try:
+        payload = jwt.decode(refresh_token, settings.secret_key, algorithms=["HS256"])
+        if payload.get("type") != "refresh":
+            raise credentials_exception
+        email = payload.get("sub")
+        jti = payload.get("jti")
+        if not email or not jti:
+            raise credentials_exception
+    except JWTError as exc:
+        raise credentials_exception from exc
+
+    stored = db.query(RefreshToken).filter(RefreshToken.jti == jti).first()
+    if not stored or stored.revoked or stored.expires_at < datetime.utcnow():
+        raise credentials_exception
+
+    user = get_user_by_email(db, email)
+    if not user or not user.is_active:
+        raise credentials_exception
+
+    stored.revoked = True
+    db.commit()
+    return issue_token_pair(db, user)
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
@@ -56,6 +106,8 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+        if payload.get("type") not in {None, "access"}:
+            raise credentials_exception
         email = payload.get("sub")
         if not email:
             raise credentials_exception

@@ -4,10 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.auth import authenticate_user, create_access_token, get_current_user, hash_password
+from app.auth import (
+    authenticate_user,
+    get_current_user,
+    hash_password,
+    issue_token_pair,
+    rotate_refresh_token,
+)
 from app.database import get_db
 from app.models import User
-from app.schemas import LoginRequest, Token, UserCreate, UserOut
+from app.schemas import LoginRequest, RefreshRequest, Token, UserCreate, UserOut
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -36,7 +42,7 @@ def login_form(
     user = authenticate_user(db, form.username, form.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    return Token(access_token=create_access_token(user.email))
+    return Token(**issue_token_pair(db, user))
 
 
 @router.post("/login/json", response_model=Token)
@@ -44,7 +50,12 @@ def login_json(payload: LoginRequest, db: Annotated[Session, Depends(get_db)]) -
     user = authenticate_user(db, payload.email, payload.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    return Token(access_token=create_access_token(user.email))
+    return Token(**issue_token_pair(db, user))
+
+
+@router.post("/refresh", response_model=Token)
+def refresh(payload: RefreshRequest, db: Annotated[Session, Depends(get_db)]) -> Token:
+    return Token(**rotate_refresh_token(db, payload.refresh_token))
 
 
 @router.get("/me", response_model=UserOut)

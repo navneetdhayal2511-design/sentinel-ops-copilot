@@ -28,6 +28,7 @@ class InvestigationResult:
     model_name: str
     latency_ms: int
     cost_usd: float
+    citations: list[dict] = field(default_factory=list)
     traces: list[dict] = field(default_factory=list)
 
 
@@ -81,11 +82,11 @@ def _heuristic_investigate(alert: Alert, retriever: RunbookRetriever) -> Investi
     _trace(traces, step, "tool:propose_remediation", json.dumps(remediation, indent=2))
     step += 1
 
-    citations = ", ".join(d["slug"] for d in docs) or "none"
+    citation_slugs = ", ".join(d["slug"] for d in docs) or "none"
     summary = (
         f"Alert '{alert.title}' on {alert.service} ({alert.severity}). "
         f"error_rate={metrics.get('error_rate')}, p99={metrics.get('p99_ms')}ms. "
-        f"Runbooks consulted: {citations}."
+        f"Runbooks consulted: {citation_slugs}."
     )
     actions = "\n".join(f"- {a}" for a in remediation["actions"])
     _trace(traces, step, "conclusion", f"{root}\n\nActions:\n{actions}")
@@ -98,12 +99,12 @@ def _heuristic_investigate(alert: Alert, retriever: RunbookRetriever) -> Investi
         model_name="sentinel-heuristic-v1",
         latency_ms=120,
         cost_usd=0.0,
+        citations=docs,
         traces=traces,
     )
 
 
 def _llm_investigate(alert: Alert, retriever: RunbookRetriever) -> InvestigationResult:
-    """Optional OpenAI path. Falls back to heuristic if key missing or call fails."""
     if not settings.openai_api_key:
         return _heuristic_investigate(alert, retriever)
 
@@ -235,6 +236,7 @@ def _llm_investigate(alert: Alert, retriever: RunbookRetriever) -> Investigation
     if not parsed:
         fallback = _heuristic_investigate(alert, retriever)
         fallback.traces = traces + fallback.traces
+        fallback.citations = docs or fallback.citations
         fallback.model_name = settings.openai_model + "+heuristic-fallback"
         fallback.latency_ms = latency_ms
         return fallback
@@ -253,6 +255,7 @@ def _llm_investigate(alert: Alert, retriever: RunbookRetriever) -> Investigation
         model_name=settings.openai_model,
         latency_ms=latency_ms,
         cost_usd=0.002,
+        citations=docs,
         traces=traces,
     )
 
@@ -292,10 +295,12 @@ def run_investigation(
         summary=result.summary,
         root_cause=result.root_cause,
         recommended_actions=result.recommended_actions,
+        citations_json=json.dumps(result.citations),
         confidence=result.confidence,
         model_name=result.model_name,
         latency_ms=result.latency_ms,
         cost_usd=result.cost_usd,
+        feedback_status="pending",
     )
     db.add(inv)
     db.flush()

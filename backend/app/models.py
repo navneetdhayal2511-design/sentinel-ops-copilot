@@ -18,6 +18,20 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     investigations: Mapped[list["Investigation"]] = relationship(back_populates="assignee")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user")
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    jti: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="refresh_tokens")
 
 
 class Alert(Base):
@@ -50,16 +64,21 @@ class Investigation(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     root_cause: Mapped[str] = mapped_column(Text, default="")
     recommended_actions: Mapped[str] = mapped_column(Text, default="")
+    citations_json: Mapped[str] = mapped_column(Text, default="[]")
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
     model_name: Mapped[str] = mapped_column(String(128), default="demo")
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    feedback_status: Mapped[str] = mapped_column(String(32), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     alert: Mapped["Alert"] = relationship(back_populates="investigations")
     assignee: Mapped["User | None"] = relationship(back_populates="investigations")
     traces: Mapped[list["AgentTrace"]] = relationship(back_populates="investigation")
     audit_events: Mapped[list["AuditEvent"]] = relationship(back_populates="investigation")
+    feedback: Mapped[list["InvestigationFeedback"]] = relationship(
+        back_populates="investigation"
+    )
 
 
 class AgentTrace(Base):
@@ -73,6 +92,20 @@ class AgentTrace(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     investigation: Mapped["Investigation"] = relationship(back_populates="traces")
+
+
+class InvestigationFeedback(Base):
+    __tablename__ = "investigation_feedback"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    investigation_id: Mapped[int] = mapped_column(ForeignKey("investigations.id"), index=True)
+    actor: Mapped[str] = mapped_column(String(128))
+    decision: Mapped[str] = mapped_column(String(32))  # approved | rejected | edited
+    notes: Mapped[str] = mapped_column(Text, default="")
+    edited_root_cause: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    investigation: Mapped["Investigation"] = relationship(back_populates="feedback")
 
 
 class AuditEvent(Base):
@@ -99,3 +132,32 @@ class Runbook(Base):
     service: Mapped[str] = mapped_column(String(128), index=True)
     content: Mapped[str] = mapped_column(Text)
     tags: Mapped[str] = mapped_column(String(255), default="")
+
+
+class BackgroundJob(Base):
+    __tablename__ = "background_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    result_json: Mapped[str] = mapped_column(Text, default="{}")
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class EvalRun(Base):
+    __tablename__ = "eval_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    accuracy: Mapped[float] = mapped_column(Float, default=0.0)
+    precision: Mapped[float] = mapped_column(Float, default=0.0)
+    recall: Mapped[float] = mapped_column(Float, default=0.0)
+    hallucination_rate: Mapped[float] = mapped_column(Float, default=0.0)
+    avg_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    avg_latency_ms: Mapped[float] = mapped_column(Float, default=0.0)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    passed: Mapped[int] = mapped_column(Integer, default=0)
+    report_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
